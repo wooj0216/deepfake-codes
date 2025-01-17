@@ -55,13 +55,13 @@ Extracting all training image feature using CLIP / DINO Model.
 ```ruby
 # Training Dataset
 CUDA_VISIBLE_DEVICES=$1 python feature_extraction/progan.py \
-    --model_type openai/clip-vit-large-patch14 \
+    --model_type <repository name of huggingface model> \
     --source_dir <directory of dataset> \
     --save_dir <directory to save features>
 
 # Test Dataset
 CUDA_VISIBLE_DEVICES=$1 python feature_extraction/testset.py \
-    --model_type openai/clip-vit-large-patch14 \
+    --model_type <repository name of huggingface model> \
     --source_dir <directory of dataset> \
     --save_dir <directory to save features> \
     --only_testset
@@ -77,13 +77,13 @@ For the test dataset, you can use `--only_testset` option. This option makes als
 ### Training
 # Linear Regression
 CUDA_VISIBLE_DEVICES=$1 python train_linear.py \
-    --model_type clip \
+    --model_type <type of model> \
     --train_dir <directory of train dataset> \
     --test_dir <directory of test dataset>
 
 # KNN (K-Nearest Neighbor)
 CUDA_VISIBLE_DEVICES=$1 python knn.py \
-    --model_type dino \
+    --model_type <type of model> \
     --train_dir <directory of train dataset> \
     --test_dir <directory of test dataset> \
     --gen_type <data type> \
@@ -91,9 +91,9 @@ CUDA_VISIBLE_DEVICES=$1 python knn.py \
 
 ### Evaluation for Linear Regression
 CUDA_VISIBLE_DEVICES=$1 python evaluate_linear.py \
-    --checkpoint_path <path to .pth checkpoint> \
+    --checkpoint_path <path to pth checkpoint> \
     --test_dir <directory of test dataset> \
-    --results_file <path to save the .txt results>
+    --results_file <path to save the txt results>
 ```
 
 The linear regression training process will save the model with the best AP (Average Precision).
