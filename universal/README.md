@@ -1,6 +1,8 @@
-# CLIP and DINO
+# UniversalFakeDetect
 
 This repository organizes the code for [Towards Universal Fake Image Detectors that Generalize Across Generative Models](https://arxiv.org/abs/2302.10174). The official repository can be found [here](https://github.com/WisconsinAIVision/UniversalFakeDetect).
+
+The original code only includes support for CLIP, but this repository also provides options for the DINO backbone.
 
 ## Setup
 Create a virtual environment and run
