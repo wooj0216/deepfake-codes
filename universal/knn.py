@@ -10,24 +10,32 @@ def train_load_features_from_dataset(dataset_root):
     features = []
     labels = []
     count = 0
-    for class_folder in tqdm(os.listdir(dataset_root), desc="Loading training data"):
-        class_path = os.path.join(dataset_root, class_folder)
-        if not os.path.isdir(class_path):
-            continue  # Skip non-folder entries
-        for label_name, label in [("0_real", 1), ("1_fake", 0)]:
-            label_folder = os.path.join(class_path, label_name)
-            if not os.path.exists(label_folder):
-                print(f"Warning: Missing folder {label_folder}, skipping.")
-                continue
-            for file in os.listdir(label_folder)[:1000]:  # Limit to 1000 samples per class, for time reasons
-                if file.endswith(".npz"):
-                    data = np.load(os.path.join(label_folder, file))
-                    feature = data['arr_0']
-                    feature = feature.reshape(-1)
-                    features.append(feature)
-                    labels.append(label)
-                    count += 1
-    print(f"Loaded {count} total files from dataset.")
+
+    # Collect all parent directories with 0_real or 1_fake
+    parent_dirs = [
+        os.path.basename(root)
+        for root, dirs, files in os.walk(dataset_root)
+        for label_name in ["0_real", "1_fake"]
+        if label_name in dirs
+    ]
+    
+    # Use tqdm with parent directories
+    for parent_dir in tqdm(parent_dirs):
+        for root, dirs, files in os.walk(dataset_root):
+            if os.path.basename(root) == parent_dir:
+                for label_name, label in [("0_real", 1), ("1_fake", 0)]:
+                    if label_name in dirs:
+                        label_folder = os.path.join(root, label_name)
+                        for file in os.listdir(label_folder)[:1000]:  # Limit to 1000 samples per class
+                            if file.endswith(".npz"):
+                                data = np.load(os.path.join(label_folder, file))
+                                feature = data['arr_0']
+                                feature = feature.reshape(-1)
+                                features.append(feature)
+                                labels.append(label)
+                                count += 1
+
+    print(f"Loaded {count} total files from training dataset.")
     return np.array(features), np.array(labels)
 
 
@@ -35,20 +43,32 @@ def test_load_features_from_dataset(dataset_root):
     features = []
     labels = []
     count = 0
-    for label_name, label in [("0_real", 1), ("1_fake", 0)]:
-        label_folder = os.path.join(dataset_root, label_name)
-        if not os.path.exists(label_folder):
-            print(f"Warning: Missing folder {label_folder}, skipping.")
-            continue
-        for file in os.listdir(label_folder)[:1000]:  # Limit to 1000 samples per class, for time reasons
-            if file.endswith(".npz"):
-                data = np.load(os.path.join(label_folder, file))
-                feature = data['arr_0']
-                feature = feature.reshape(-1)
-                features.append(feature)
-                labels.append(label)
-                count += 1
-    print(f"Loaded {count} files from {dataset_root}")
+
+    # Collect all parent directories with 0_real or 1_fake
+    parent_dirs = [
+        os.path.basename(root)
+        for root, dirs, files in os.walk(dataset_root)
+        for label_name in ["0_real", "1_fake"]
+        if label_name in dirs
+    ]
+    
+    # Use tqdm with parent directories
+    for parent_dir in tqdm(parent_dirs):
+        for root, dirs, files in os.walk(dataset_root):
+            if os.path.basename(root) == parent_dir:
+                for label_name, label in [("0_real", 1), ("1_fake", 0)]:
+                    if label_name in dirs:
+                        label_folder = os.path.join(root, label_name)
+                        for file in os.listdir(label_folder)[:1000]:  # Limit to 1000 samples per class
+                            if file.endswith(".npz"):
+                                data = np.load(os.path.join(label_folder, file))
+                                feature = data['arr_0']
+                                feature = feature.reshape(-1)
+                                features.append(feature)
+                                labels.append(label)
+                                count += 1
+
+    print(f"Loaded {count} files from testing dataset.")
     return np.array(features), np.array(labels)
 
 
@@ -79,9 +99,9 @@ if __name__ == '__main__':
     args = arg_parser.parse_args()
 
     if args.gen_type == "gan":
-        data_names = ['deepfake', 'stargan', 'biggan', 'gaugan', 'imle']
+        data_names = ['progan', 'cyclegan', 'biggan', 'stylegan2', 'gaugan', 'stargan', 'deepfake', 'seeingdark', 'san', 'crn', 'imle']
     elif args.gen_type == "diffusion":
-        data_names = ['dalle', 'glide_100_10', 'guided', 'ldm_100', 'ldm_200', 'ldm_200_cfg']
+        data_names = ['guided', 'ldm_200', 'ldm_200_cfg', 'ldm_100', 'glide_100_27', 'glide_50_27', 'glide_100_10', 'dalle']
 
     log_dir = os.path.join(args.logging_dir, args.model_type)
     os.makedirs(log_dir, exist_ok=True)
