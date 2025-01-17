@@ -96,7 +96,7 @@ CUDA_VISIBLE_DEVICES=$1 python evaluate_linear.py \
     --results_file <path to save the txt results>
 ```
 
-The linear regression training process will save the model with the best AP (Average Precision).
+The linear regression training process will save the model with the best accuracy.
 You can evaluate with the performance using the saved `.pth` file.
 
 
