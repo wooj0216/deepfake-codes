@@ -35,7 +35,7 @@ dataset/
             1_fake/
         
         stylegan/
-            bedroom
+            bedroom/
                 0_real/
                 1_fake/
             car/
