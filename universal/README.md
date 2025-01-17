@@ -60,8 +60,8 @@ CUDA_VISIBLE_DEVICES=$1 python feature_extraction/progan.py \
 # Test Dataset
 CUDA_VISIBLE_DEVICES=$1 python feature_extraction/testset.py \
     --model_type openai/clip-vit-large-patch14 \
-    --source_dir datasets/diffusion_datasets \
-    --save_dir features/clip/diffusion_datasets \
+    --source_dir <directory of dataset> \
+    --save_dir <directory to save features> \
     --only_testset
 ```
 
@@ -76,22 +76,22 @@ For the test dataset, you can use `--only_testset` option. This option makes als
 # Linear Regression
 CUDA_VISIBLE_DEVICES=$1 python train_linear.py \
     --model_type clip \
-    --train_dir features/clip/progan_train \
-    --test_dir features/clip/cnn_synth_test
+    --train_dir <directory of train dataset> \
+    --test_dir <directory of test dataset>
 
 # KNN (K-Nearest Neighbor)
 CUDA_VISIBLE_DEVICES=$1 python knn.py \
     --model_type dino \
-    --train_dir features/dino/progan_train \
-    --test_dir features/dino/cnn_synth_test \
-    --gen_type gan \
-    --num_k 5 \
+    --train_dir <directory of train dataset> \
+    --test_dir <directory of test dataset> \
+    --gen_type <data type> \
+    --num_k <number of cluster> \
 
 ### Evaluation for Linear Regression
 CUDA_VISIBLE_DEVICES=$1 python evaluate_linear.py \
-    --checkpoint_path pretrained_models/dino_weights.pth \
-    --test_dir features/dino/cnn_synth_test \
-    --results_file results/dino/linear_regression_gan.txt
+    --checkpoint_path <path to .pth checkpoint> \
+    --test_dir <directory of test dataset> \
+    --results_file <path to save the .txt results>
 ```
 
 The linear regression training process will save the model with the best AP (Average Precision).

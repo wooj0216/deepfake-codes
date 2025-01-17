@@ -15,18 +15,15 @@ pip install -e .
 ## Inference
 If you simply want to use AEROBLADE for detection, run `inference.sh`.
 ```
-CUDA_VISIBLE_DEVICES=$1 python inference.py
+CUDA_VISIBLE_DEVICES=$1 python inference.py \
+    --files-or-dirs <several files or directories to inference> \
+    --output-dir <directory to save the results> \
+    --print-results
 ```
-Calling the script without any arguments will use the images in `example_images`.
+Calling the script without any arguments will use `'real.png'` and `'SD1-1/png'` images in `example_images`.
 Note that if you provide a directory, all images must have the same dimensions.
 
 By default, it computes the reconstructions using the AEs from **Stable Diffusion 1**, **Stable Diffusion 2**, and **Kandinsky 2.1** and measures the distance using the **LPIPS (vgg layer 2)**.
-
-The options for running the command are listed below:
-- `--output-dir`
-- `--autoencoders`
-- `--distance-metric`
-- `--print-results`
 
 The computed distances are printed and saved to `--output-dir` or `outputs/inference/example_images/distances.csv` by default. Note that this code saves the negative distances, which is why the best AE is denoted by `max`.
 
@@ -38,7 +35,11 @@ For convenience, we made a single `AEROBLADE` class instance. You can find an ex
 ## Evaluation
 If you want to evaluate the images, run `detection.sh`
 ```
-CUDA_VISIBLE_DEVICES=$1 python detection.py
+CUDA_VISIBLE_DEVICES=$1 python detection.py \
+    --real-dir <directory of real dataset> \
+    --fake-dirs <directories of several fake datasets> \
+    --save-dir <path to save the results> \
+    --reconstruction-root <path to save the reconstruction results>
 ```
 the evaluation setting requires both real image directory and fake (generated) image directories.
 The saved results will ultimately include both detection and attribution outcomes.
