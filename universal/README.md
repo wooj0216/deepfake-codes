@@ -50,7 +50,7 @@ The code can handle cases where class information is organized into subdirectori
 
 ### Training & Test Data Preprocessing
 Extracting all training image feature using CLIP / DINO Model.
-```bash
+```ruby
 # Training Dataset
 CUDA_VISIBLE_DEVICES=$1 python feature_extraction/progan.py \
     --model_type openai/clip-vit-large-patch14 \
@@ -71,7 +71,7 @@ For the test dataset, you can use `--only_testset` option. This option makes als
 
 
 ## Training & Test
-```bash
+```ruby
 ### Training
 # Linear Regression
 CUDA_VISIBLE_DEVICES=$1 python train_linear.py \

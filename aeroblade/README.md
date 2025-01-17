@@ -14,7 +14,7 @@ pip install -e .
 
 ## Inference
 If you simply want to use AEROBLADE for detection, run `inference.sh`.
-```
+```ruby
 CUDA_VISIBLE_DEVICES=$1 python inference.py \
     --files-or-dirs <several files or directories to inference> \
     --output-dir <directory to save the results> \
@@ -34,7 +34,7 @@ For convenience, we made a single `AEROBLADE` class instance. You can find an ex
 
 ## Evaluation
 If you want to evaluate the images, run `detection.sh`
-```
+```ruby
 CUDA_VISIBLE_DEVICES=$1 python detection.py \
     --real-dir <directory of real dataset> \
     --fake-dirs <directories of several fake datasets> \
