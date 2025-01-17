@@ -106,6 +106,7 @@ if __name__ == '__main__':
         results.append((model_folder, accuracy, f1))
 
     # Save results to file
+    os.makedirs(os.path.dirname(args.results_file), exist_ok=True)
     with open(args.results_file, "w") as f:
         for model_folder, accuracy, f1 in results:
             f.write(f"Model Folder: {model_folder}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}\n")
