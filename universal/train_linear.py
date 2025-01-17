@@ -17,18 +17,15 @@ class FeatureDataset(Dataset):
     @staticmethod
     def _load_feature_paths(dataset_root):
         feature_paths = []
-        for class_folder in os.listdir(dataset_root):
-            class_path = os.path.join(dataset_root, class_folder)
-            if not os.path.isdir(class_path):
-                continue
+        
+        for root, dirs, files in os.walk(dataset_root):
             for label_name, label in [("0_real", 1), ("1_fake", 0)]:
-                label_folder = os.path.join(class_path, label_name)
-                if not os.path.exists(label_folder):
-                    print(f"Warning: Missing folder {label_folder}, skipping.")
-                    continue
-                for file in os.listdir(label_folder):
-                    if file.endswith(".npz"):
-                        feature_paths.append((os.path.join(label_folder, file), label))
+                if label_name in dirs:
+                    label_folder = os.path.join(root, label_name)
+                    for file in os.listdir(label_folder):
+                        if file.endswith(".npz"):
+                            feature_paths.append((os.path.join(label_folder, file), label))
+        
         return feature_paths
 
     def __len__(self):
@@ -158,12 +155,16 @@ if __name__ == "__main__":
     arg_parser.add_argument("--batch_size", type=int, default=512)
     arg_parser.add_argument("--num_epochs", type=int, default=10)
     arg_parser.add_argument("--learning_rate", type=float, default=0.001)
-    arg_parser.add_argument("--eval_interval", type=int, default=20)  # Evaluate every 500 iterations
+    arg_parser.add_argument("--eval_interval", type=int, default=20)
     arg_parser.add_argument("--save_dir", type=str, default="pretrained_models")
 
     args = arg_parser.parse_args()
 
-    print("Arguments:", args)
+    # Print arguments
+    print("Arguments:")
+    for arg, value in vars(args).items():
+        print(f"{arg}: {value}")
+    print("\n")
 
     os.makedirs(args.save_dir, exist_ok=True)
 
