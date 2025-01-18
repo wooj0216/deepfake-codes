@@ -56,13 +56,8 @@ if __name__ == '__main__':
     model_cls = sorted(os.listdir(args.source_dir))
     os.makedirs(args.save_dir, exist_ok=True)
     
-    resume = False
     for cls in model_cls:
-        if cls == "imagenet":
-            resume = True
-        if resume == False:
-            continue
-
+        
         if not args.only_testset:  # process both 0_real and 1_fake directories
             if cls in ["cyclegan", "progan", "stylegan", "stylegan2"]:  # dataset with class info.
                 class_ = os.listdir(os.path.join(args.source_dir, cls))
