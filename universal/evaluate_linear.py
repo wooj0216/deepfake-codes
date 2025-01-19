@@ -54,7 +54,7 @@ class FolderDataset(Dataset):
         return torch.tensor(feature, dtype=torch.float32), torch.tensor(label, dtype=torch.float32).unsqueeze(0)
 
 
-def evaluate_model(model, data_loader, device):
+def evaluate_model(model, data_loader, threshold, device):
     model.eval()
     y_pred = []
     y_true = []
@@ -64,7 +64,7 @@ def evaluate_model(model, data_loader, device):
             features = features.to(device)
             labels = labels.to(device)
             outputs = model(features)
-            y_pred.extend((outputs.cpu().numpy() > 0.5).astype(int).flatten())
+            y_pred.extend((outputs.cpu().numpy() > threshold).astype(int).flatten())
             y_true.extend(labels.cpu().numpy().flatten())
 
     return y_pred, y_true
@@ -75,6 +75,7 @@ if __name__ == '__main__':
     parser.add_argument("--test_dir", type=str, required=True, help="Path to the test dataset root")
     parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the model checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for evaluation")
+    parser.add_argument("--threshold", type=float, default=0.5, help="Threshold for binary classification")
     parser.add_argument("--results_file", type=str, default="evaluation_results.txt", help="File to save evaluation results")
     args = parser.parse_args()
 
@@ -100,7 +101,7 @@ if __name__ == '__main__':
             continue
 
         loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
-        y_pred, y_true = evaluate_model(model, loader, device)
+        y_pred, y_true = evaluate_model(model, loader, args.threshold, device)
         accuracy = accuracy_score(y_true, y_pred)
         f1 = f1_score(y_true, y_pred, zero_division=1)
         results.append((model_folder, accuracy, f1))
