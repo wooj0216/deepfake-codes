@@ -93,9 +93,17 @@ CUDA_VISIBLE_DEVICES=$1 python knn.py \
 CUDA_VISIBLE_DEVICES=$1 python evaluate_linear.py \
     --checkpoint_path <path to pth checkpoint> \
     --test_dir <directory of test dataset> \
-    --results_file <path to save the txt results> \
+    --results_file_or_dir <path or directory to save the txt results> \
     --threshold <threshold for binary classification> \
     --metric acc auc
+
+### Inference for Linear Regression
+CUDA_VISIBLE_DEVICES=$1 python evaluate_linear.py \
+    --checkpoint_path <path to pth checkpoint> \
+    --test_dir <directory of test dataset> \
+    --results_file_or_dir <path or directory to save the txt results> \
+    --threshold <threshold for binary classification> \
+    --only_inference
 ```
 
 The linear regression training process will save the model with the best accuracy.

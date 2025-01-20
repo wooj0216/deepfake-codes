@@ -62,7 +62,7 @@ class FolderDataset(Dataset):
         )
 
 
-def evaluate_model(model, data_loader, device, threshold=0.5, compute_auc=False):
+def evaluate_model(model, data_loader, device, threshold=0.5, compute_auc=False, only_inference=False):
     """
     Evaluate model on a given DataLoader.
     Returns:
@@ -86,7 +86,7 @@ def evaluate_model(model, data_loader, device, threshold=0.5, compute_auc=False)
             y_pred.extend(preds.astype(int))
             y_true.extend(labels.cpu().numpy().flatten())
 
-            if compute_auc:
+            if compute_auc or only_inference:
                 probs = outputs.cpu().numpy().flatten()
                 y_prob.extend(probs)
 
@@ -98,9 +98,10 @@ if __name__ == "__main__":
     parser.add_argument("--test_dir", type=str, required=True, help="Path to the test dataset root")
     parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the model checkpoint")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for evaluation")
-    parser.add_argument("--results_file", type=str, default="evaluation_results.txt", help="File to save evaluation results")
+    parser.add_argument("--results_file_or_dir", type=str, default="results", help="txt file or directory to save evaluation results")
     parser.add_argument("--threshold", type=float, default=0.5, help="Threshold for classification")
-    parser.add_argument("--metric", type=str, required=True, nargs="+", default=["acc"], help="Metrics to evaluate")
+    parser.add_argument("--metric", type=str, required=False, nargs="+", default=["acc"], help="Metrics to evaluate")
+    parser.add_argument("--only_inference", action="store_true", help="Only perform inference without evaluation")
     args = parser.parse_args()
 
     # Load model checkpoint
@@ -123,7 +124,10 @@ if __name__ == "__main__":
     labels = []
     preds = []
 
+    inference_results = {}
+
     for model_folder in tqdm(os.listdir(args.test_dir), desc="Evaluating Folders"):
+        inference_results[model_folder] = []
         folder_path = os.path.join(args.test_dir, model_folder)
         if not os.path.isdir(folder_path):
             continue
@@ -133,25 +137,54 @@ if __name__ == "__main__":
             continue
 
         loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+        whole_samples = loader.dataset.samples
         y_true, y_pred, y_prob = evaluate_model(
-            model, loader, device, threshold=args.threshold, compute_auc=compute_auc
+            model, loader, device, threshold=args.threshold, compute_auc=compute_auc,
+            only_inference=args.only_inference
         )
 
-        accuracy = accuracy_score(y_true, y_pred)
-        f1 = f1_score(y_true, y_pred, zero_division=1)
-        
-        if compute_auc:
-            labels.extend(y_true)
-            preds.extend(y_prob)
+        if args.only_inference:
+            for (sample_path, label), score, pred_label in zip(whole_samples, y_prob, y_pred):
+                sample_path = sample_path.replace(args.test_dir + "/", "")
+                pred_label = "real" if pred_label == 1 else "fake"
+                inference_results[model_folder].append(f"('{sample_path}', {score:.7f}, {pred_label}),")
+        else:
+            accuracy = accuracy_score(y_true, y_pred)
+            f1 = f1_score(y_true, y_pred, zero_division=1)
+            
+            if compute_auc:
+                labels.extend(y_true)
+                preds.extend(y_prob)
 
-        results.append((model_folder, accuracy, f1, None))
+            results.append((model_folder, accuracy, f1, None))
 
-        all_accuracies.append(accuracy)
-        all_f1s.append(f1)
+            all_accuracies.append(accuracy)
+            all_f1s.append(f1)
 
     # Save results to file
-    os.makedirs(os.path.dirname(args.results_file), exist_ok=True)
-    with open(args.results_file, "w") as f:
+    if args.only_inference:
+        if not os.path.isdir(args.results_file_or_dir):
+            output_dir = os.path.dirname(args.results_file_or_dir)
+        else:
+            output_dir = args.results_file_or_dir
+        os.makedirs(output_dir, exist_ok=True)
+        for model_folder, results in inference_results.items():
+            with open(os.path.join(output_dir, f"{model_folder}.txt"), "w") as f:
+                for result in results:
+                    f.write(result + "\n")
+        
+        print(f"Inference results saved to {output_dir}")
+        exit()
+
+    if not os.path.isdir(args.results_file_or_dir):
+        os.makedirs(args.results_file_or_dir, exist_ok=True)
+        output_path = args.results_file_or_dir
+    else:
+        output_path = os.path.join(args.results_file_or_dir, "results.txt")
+
+    os.makedirs(args.results_file_or_dir, exist_ok=True)
+    output_path = os.path.join(args.results_file_or_dir, "results.txt")
+    with open(output_path, "w") as f:
         for item in results:
             folder_name, accuracy, f1, auc_val = item
             if auc_val is not None:
@@ -176,5 +209,5 @@ if __name__ == "__main__":
             else:
                 overall_auc = roc_auc_score(labels, preds)
                 f.write(f"Overall Mean AUC: {overall_auc:.4f}\n")
-    print(f"Results saved to {args.results_file}")
+    print(f"Results saved to {args.results_file_or_dir}")
     print("Done.")
