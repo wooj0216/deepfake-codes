@@ -8,25 +8,57 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import argparse
+import random
 
 # Custom Dataset
 class FeatureDataset(Dataset):
-    def __init__(self, dataset_root):
-        self.data = self._load_feature_paths(dataset_root)
+    def __init__(self, dataset_root, split=""):
+        self.dataset_root = dataset_root
+        self.split = split
+        self.data = self._load_feature_paths()
 
-    @staticmethod
-    def _load_feature_paths(dataset_root):
+    def _load_feature_paths(self):
         feature_paths = []
         
-        for root, dirs, files in os.walk(dataset_root):
+        for root, dirs, files in os.walk(self.dataset_root):
             for label_name, label in [("0_real", 1), ("1_fake", 0)]:
                 if label_name in dirs:
                     label_folder = os.path.join(root, label_name)
                     for file in os.listdir(label_folder):
                         if file.endswith(".npz"):
                             feature_paths.append((os.path.join(label_folder, file), label))
-        
+
+        if self.split == "train":
+            feature_paths = self.balance_feature_paths(feature_paths, ratio=1)
+
         return feature_paths
+
+    @staticmethod
+    def balance_feature_paths(feature_paths, ratio=1):
+
+        real_samples = [path for path in feature_paths if path[1] == 1]  # label == 1
+        fake_samples = [path for path in feature_paths if path[1] == 0]  # label == 0
+
+        real_count = len(real_samples)
+        fake_count = len(fake_samples)
+
+        if ratio == 1:
+            min_count = min(real_count, fake_count)
+            real_samples = random.sample(real_samples, min_count)
+            fake_samples = random.sample(fake_samples, min_count)
+
+        elif ratio > 1:
+            if real_count < fake_count:
+                real_samples = random.sample(real_samples, min(real_count, fake_count // ratio))
+                fake_samples = random.sample(fake_samples, len(real_samples) * ratio)
+            else:
+                fake_samples = random.sample(fake_samples, min(fake_count, real_count // ratio))
+                real_samples = random.sample(real_samples, len(fake_samples) * ratio)
+
+        balanced_feature_paths = real_samples + fake_samples
+        random.shuffle(balanced_feature_paths)
+
+        return balanced_feature_paths
 
     def __len__(self):
         return len(self.data)
@@ -48,7 +80,18 @@ class BinaryClassifier(nn.Module):
 
 # Training Function with Iteration-Level Evaluation
 def train_model_with_eval_iteration(
-    model, model_type, train_loader, test_loader, criterion, optimizer, num_epochs, save_dir, batch_size, eval_interval=500
+    model,
+    model_type,
+    train_loader,
+    test_loader,
+    criterion,
+    optimizer,
+    num_epochs,
+    save_dir,
+    batch_size,
+    eval_interval=500,
+    threshold=0.5,
+    warmup_epoch=1,
 ):
     best_accuracy = 0.0
     best_iteration = 0
@@ -80,14 +123,14 @@ def train_model_with_eval_iteration(
                 # Evaluate at predefined iterations
                 if total_iterations % eval_interval == 0:
                     model.eval()
-                    eval_accuracy = evaluate_model(model, test_loader, log=False)
+                    eval_accuracy = evaluate_model(model, test_loader, threshold, log=False)
                     eval_accuracy_history.append((total_iterations, eval_accuracy))
                     print(
                         f"Iteration {total_iterations}, Eval Accuracy: {eval_accuracy:.4f}"
                     )
 
                     # Save the model if it achieves the best evaluation accuracy
-                    if eval_accuracy > best_accuracy:
+                    if eval_accuracy > best_accuracy and epoch >= warmup_epoch:  # save the checkpoint only if the epoch exceeds warmup_epoch
                         best_accuracy = eval_accuracy
                         best_iteration = total_iterations
                         torch.save(
@@ -104,24 +147,10 @@ def train_model_with_eval_iteration(
 
     print(f"Best Eval Accuracy: {best_accuracy:.4f} at Iteration {best_iteration}")
 
-    # Visualization
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, len(loss_history) + 1), loss_history, label="Loss (Epoch)")
-    if eval_accuracy_history:
-        eval_iters, eval_accs = zip(*eval_accuracy_history)
-        plt.plot(eval_iters, eval_accs, label="Eval Accuracy (Iteration)", marker="o")
-    plt.xlabel("Iteration")
-    plt.ylabel("Value")
-    plt.title("Training Loss and Evaluation Accuracy")
-    plt.legend()
-    plt.grid()
-    plt.savefig(os.path.join(save_dir, "training_curve_with_eval_iter.png"))
-    plt.show()
-
     return best_accuracy, best_iteration
 
 # Evaluation Function
-def evaluate_model(model, data_loader, log=True):
+def evaluate_model(model, data_loader, threshold=0.5, log=True):
     model.eval()
     all_preds = []
     all_labels = []
@@ -130,7 +159,7 @@ def evaluate_model(model, data_loader, log=True):
         for features, labels in data_loader:
             features, labels = features.to(device), labels.to(device)
             outputs = model(features)
-            preds = (outputs >= 0.5).long()
+            preds = (outputs >= threshold).long()
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
@@ -156,6 +185,8 @@ if __name__ == "__main__":
     arg_parser.add_argument("--num_epochs", type=int, default=10)
     arg_parser.add_argument("--learning_rate", type=float, default=0.001)
     arg_parser.add_argument("--eval_interval", type=int, default=20)
+    arg_parser.add_argument("--threshold", type=float, default=0.5)
+    arg_parser.add_argument("--warmup_epoch", type=int, default=1)
     arg_parser.add_argument("--save_dir", type=str, default="pretrained_models")
 
     args = arg_parser.parse_args()
@@ -164,7 +195,6 @@ if __name__ == "__main__":
     print("Arguments:")
     for arg, value in vars(args).items():
         print(f"{arg}: {value}")
-    print("\n")
 
     os.makedirs(args.save_dir, exist_ok=True)
 
@@ -172,10 +202,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Prepare datasets and loaders
-    train_dataset = FeatureDataset(args.train_dir)
+    train_dataset = FeatureDataset(args.train_dir, split="train")
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
-    test_dataset = FeatureDataset(args.test_dir)
+    test_dataset = FeatureDataset(args.test_dir, split="test")
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Initialize model, criterion, and optimizer
@@ -187,12 +217,23 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     # Train the model
-    print("Training the model with iteration-level evaluation...")
+    print("\nTraining the model with iteration-level evaluation...")
     best_accuracy, best_iteration = train_model_with_eval_iteration(
-        model, args.model_type, train_loader, test_loader, criterion, optimizer, args.num_epochs, args.save_dir, args.batch_size, args.eval_interval
+        model,
+        args.model_type,
+        train_loader,
+        test_loader,
+        criterion,
+        optimizer,
+        args.num_epochs,
+        args.save_dir,
+        args.batch_size,
+        args.eval_interval,
+        args.threshold,
+        args.warmup_epoch,
     )
     
     # Load the best model for final evaluation
     print("Evaluating the best model...")
     model.load_state_dict(torch.load(os.path.join(args.save_dir, f"{args.model_type}_weights.pth")))
-    evaluate_model(model, test_loader)
+    evaluate_model(model, test_loader, args.threshold)

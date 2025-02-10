@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     # Save results to file
     if args.only_inference:
-        if not os.path.isdir(args.results_file_or_dir):
+        if args.results_file_or_dir.endswith(".txt"):
             output_dir = os.path.dirname(args.results_file_or_dir)
         else:
             output_dir = args.results_file_or_dir
@@ -176,14 +176,13 @@ if __name__ == "__main__":
         print(f"Inference results saved to {output_dir}")
         exit()
 
-    if not os.path.isdir(args.results_file_or_dir):
-        os.makedirs(args.results_file_or_dir, exist_ok=True)
+    if args.results_file_or_dir.endswith(".txt"):
+        os.makedirs(os.path.dirname(args.results_file_or_dir), exist_ok=True)
         output_path = args.results_file_or_dir
     else:
+        os.makedirs(args.results_file_or_dir, exist_ok=True)
         output_path = os.path.join(args.results_file_or_dir, "results.txt")
 
-    os.makedirs(args.results_file_or_dir, exist_ok=True)
-    output_path = os.path.join(args.results_file_or_dir, "results.txt")
     with open(output_path, "w") as f:
         for item in results:
             folder_name, accuracy, f1, auc_val = item
@@ -209,5 +208,5 @@ if __name__ == "__main__":
             else:
                 overall_auc = roc_auc_score(labels, preds)
                 f.write(f"Overall Mean AUC: {overall_auc:.4f}\n")
-    print(f"Results saved to {args.results_file_or_dir}")
-    print("Done.")
+
+    print(f"Results saved to {output_path}")
