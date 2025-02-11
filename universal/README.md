@@ -57,6 +57,14 @@ dataset/
                 0_real/
                 1_fake/
     
+    diffusion_datasets/
+
+        dalle/
+            1_fake/
+        
+        glide_50_27/
+            1_fake/
+    
     # Facial Domain (need extra preprocessing)
     FF_preprocessed/
 
